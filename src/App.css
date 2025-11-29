@@ -560,6 +560,38 @@
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
+.error-message {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  margin-bottom: 1.75rem;
+  text-align: center;
+  border: 1px solid #f87171;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.loading-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 @keyframes popIn {
   from {
     opacity: 0;

@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Import routes
 const authRoutes = require('./src/routes/auth.routes');

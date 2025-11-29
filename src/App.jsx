@@ -5,6 +5,8 @@ import MessagesPage from './MessagesPage'
 import SettingsPage from './SettingsPage'
 import ContactsPage from './ContactsPage'
 import CreateGroupPage from './CreateGroupPage'
+import { authAPI, isAuthenticated, getCurrentUser } from './services/api'
+import socketService from './services/socket'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -22,6 +24,23 @@ function App() {
   })
   const [errors, setErrors] = useState({})
   const [successMessage, setSuccessMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Check if user is already logged in on mount
+  useEffect(() => {
+    if (isAuthenticated()) {
+      const user = getCurrentUser()
+      if (user) {
+        setCurrentUser(user)
+        setIsLoggedIn(true)
+        // Connect to socket
+        const token = localStorage.getItem('token')
+        if (token) {
+          socketService.connect(token)
+        }
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -96,7 +115,7 @@ function App() {
     return newErrors
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setSuccessMessage('')
     
@@ -106,25 +125,45 @@ function App() {
       return
     }
 
-    if (isForgotPassword) {
-      setSuccessMessage(`Password reset link sent to ${formData.email}`)
-      setTimeout(() => {
-        setIsForgotPassword(false)
-        setFormData({ email: '', password: '', confirmPassword: '', name: '', rememberMe: false })
-        setSuccessMessage('')
-      }, 2000)
-    } else if (isLogin) {
-      setSuccessMessage(`Welcome back! Logging in...`)
-      setTimeout(() => {
-        setCurrentUser({ name: formData.name || formData.email.split('@')[0], email: formData.email })
-        setIsLoggedIn(true)
-      }, 1000)
-    } else {
-      setSuccessMessage(`Account created successfully! Redirecting...`)
-      setTimeout(() => {
-        setCurrentUser({ name: formData.name, email: formData.email })
-        setIsLoggedIn(true)
-      }, 1000)
+    setIsLoading(true)
+
+    try {
+      if (isForgotPassword) {
+        setSuccessMessage(`Password reset link sent to ${formData.email}`)
+        setTimeout(() => {
+          setIsForgotPassword(false)
+          setFormData({ email: '', password: '', confirmPassword: '', name: '', rememberMe: false })
+          setSuccessMessage('')
+        }, 2000)
+      } else if (isLogin) {
+        // Login with API
+        const response = await authAPI.login(formData.email, formData.password)
+        setSuccessMessage(`Welcome back, ${response.data.user.name}!`)
+        
+        // Connect to socket
+        socketService.connect(response.data.token)
+        
+        setTimeout(() => {
+          setCurrentUser(response.data.user)
+          setIsLoggedIn(true)
+        }, 500)
+      } else {
+        // Register with API
+        const response = await authAPI.register(formData.name, formData.email, formData.password)
+        setSuccessMessage(`Account created successfully! Welcome, ${response.data.user.name}!`)
+        
+        // Connect to socket
+        socketService.connect(response.data.token)
+        
+        setTimeout(() => {
+          setCurrentUser(response.data.user)
+          setIsLoggedIn(true)
+        }, 500)
+      }
+    } catch (error) {
+      setErrors({ general: error.message || 'Something went wrong. Please try again.' })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -147,11 +186,18 @@ function App() {
     setTimeout(() => setSuccessMessage(''), 2000)
   }
 
-  const handleLogout = () => {
-    setIsLoggedIn(false)
-    setCurrentUser(null)
-    setCurrentPage('home')
-    setFormData({ email: '', password: '', confirmPassword: '', name: '', rememberMe: false })
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      socketService.disconnect()
+      setIsLoggedIn(false)
+      setCurrentUser(null)
+      setCurrentPage('home')
+      setFormData({ email: '', password: '', confirmPassword: '', name: '', rememberMe: false })
+    }
   }
 
   const handleNavigate = (page) => {
@@ -263,6 +309,7 @@ function App() {
           </div>
           
           {successMessage && <div className="success-message"><span>✓</span> {successMessage}</div>}
+          {errors.general && <div className="error-message"><span>✕</span> {errors.general}</div>}
           
           <form onSubmit={handleSubmit}>
             {!isLogin && !isForgotPassword && (
@@ -349,8 +396,12 @@ function App() {
               </div>
             )}
 
-            <button type="submit" className="submit-btn">
-              {isForgotPassword ? 'Send Reset Link' : (isLogin ? 'Sign In' : 'Create Account')}
+            <button type="submit" className="submit-btn" disabled={isLoading}>
+              {isLoading ? (
+                <span className="loading-spinner">⟳</span>
+              ) : (
+                isForgotPassword ? 'Send Reset Link' : (isLogin ? 'Sign In' : 'Create Account')
+              )}
             </button>
           </form>
 
