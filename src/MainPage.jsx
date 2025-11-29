@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import './MainPage.css'
 
-function MainPage({ user, onLogout }) {
+function MainPage({ user, onLogout, onNavigate }) {
   const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
@@ -25,9 +25,9 @@ function MainPage({ user, onLogout }) {
         </div>
         <div className="nav-links">
           <a href="#" className="nav-link active">Home</a>
-          <a href="#" className="nav-link">Messages</a>
-          <a href="#" className="nav-link">Contacts</a>
-          <a href="#" className="nav-link">Settings</a>
+          <a href="#" className="nav-link" onClick={(e) => { e.preventDefault(); onNavigate('messages'); }}>Messages</a>
+          <a href="#" className="nav-link" onClick={(e) => { e.preventDefault(); onNavigate('contacts'); }}>Contacts</a>
+          <a href="#" className="nav-link" onClick={(e) => { e.preventDefault(); onNavigate('settings'); }}>Settings</a>
         </div>
         <div className="nav-user">
           <div className="user-avatar">
@@ -46,7 +46,7 @@ function MainPage({ user, onLogout }) {
         </div>
 
         <div className="stats-grid">
-          <div className="stat-card">
+          <div className="stat-card" onClick={() => onNavigate('messages')} style={{cursor: 'pointer'}}>
             <div className="stat-icon">💬</div>
             <div className="stat-info">
               <h3>Messages</h3>
@@ -54,7 +54,7 @@ function MainPage({ user, onLogout }) {
               <span className="stat-label">Start a conversation</span>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" onClick={() => onNavigate('contacts')} style={{cursor: 'pointer'}}>
             <div className="stat-icon">👥</div>
             <div className="stat-info">
               <h3>Contacts</h3>
@@ -75,19 +75,19 @@ function MainPage({ user, onLogout }) {
         <div className="quick-actions">
           <h2>Quick Actions</h2>
           <div className="actions-grid">
-            <button className="action-card">
+            <button className="action-card" onClick={() => onNavigate('messages')}>
               <span className="action-icon">✉️</span>
               <span className="action-text">New Message</span>
             </button>
-            <button className="action-card">
+            <button className="action-card" onClick={() => onNavigate('contacts')}>
               <span className="action-icon">👤</span>
               <span className="action-text">Add Contact</span>
             </button>
-            <button className="action-card">
+            <button className="action-card" onClick={() => onNavigate('createGroup')}>
               <span className="action-icon">👥</span>
               <span className="action-text">Create Group</span>
             </button>
-            <button className="action-card">
+            <button className="action-card" onClick={() => onNavigate('settings')}>
               <span className="action-icon">⚙️</span>
               <span className="action-text">Settings</span>
             </button>

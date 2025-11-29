@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import MainPage from './MainPage'
+import MessagesPage from './MessagesPage'
+import SettingsPage from './SettingsPage'
+import ContactsPage from './ContactsPage'
+import CreateGroupPage from './CreateGroupPage'
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
+  const [currentPage, setCurrentPage] = useState('home')
   const [isLogin, setIsLogin] = useState(true)
   const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
@@ -145,11 +150,32 @@ function App() {
   const handleLogout = () => {
     setIsLoggedIn(false)
     setCurrentUser(null)
+    setCurrentPage('home')
     setFormData({ email: '', password: '', confirmPassword: '', name: '', rememberMe: false })
   }
 
+  const handleNavigate = (page) => {
+    setCurrentPage(page)
+  }
+
+  const handleUpdateUser = (updatedUser) => {
+    setCurrentUser(updatedUser)
+  }
+
   if (isLoggedIn && currentUser) {
-    return <MainPage user={currentUser} onLogout={handleLogout} />
+    if (currentPage === 'messages') {
+      return <MessagesPage user={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} />
+    }
+    if (currentPage === 'settings') {
+      return <SettingsPage user={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onUpdateUser={handleUpdateUser} />
+    }
+    if (currentPage === 'contacts') {
+      return <ContactsPage user={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} />
+    }
+    if (currentPage === 'createGroup') {
+      return <CreateGroupPage user={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} />
+    }
+    return <MainPage user={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} />
   }
 
   return (

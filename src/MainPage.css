@@ -1,14 +1,10 @@
 .main-container {
   min-height: 100vh;
-  width: 100vw;
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  width: 100%;
+  background: linear-gradient(181deg, #000000 0%, #161616 50%, #260631 100%);
   display: flex;
   flex-direction: column;
-  position: fixed;
-  top: 0;
-  left: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow : hidden;
 }
 
 /* Navbar */
