@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Get stored token
 const getToken = () => localStorage.getItem('token');
@@ -21,6 +21,27 @@ const apiRequest = async (endpoint, options = {}) => {
 
   if (!response.ok) {
     throw new Error(data.message || 'Something went wrong');
+  }
+
+  return data;
+};
+
+// File upload helper (no Content-Type header, browser sets it for FormData)
+const uploadRequest = async (endpoint, formData) => {
+  const token = getToken();
+  
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: formData,
+  });
+  
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Upload failed');
   }
 
   return data;
@@ -70,6 +91,31 @@ export const authAPI = {
       method: 'PUT',
       body: JSON.stringify(profileData),
     });
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    return apiRequest('/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
+};
+
+// User Profile API (separate from usersAPI for clarity)
+export const userAPI = {
+  getProfile: async () => {
+    return apiRequest('/auth/me');
+  },
+
+  updateProfile: async (profileData) => {
+    return apiRequest('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  },
+
+  uploadAvatar: async (formData) => {
+    return uploadRequest('/auth/avatar', formData);
   },
 
   changePassword: async (currentPassword, newPassword) => {

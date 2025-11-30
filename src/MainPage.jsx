@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
 import './MainPage.css'
 
+const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
+
+// Helper to get full avatar URL
+const getAvatarUrl = (avatar) => {
+  if (!avatar) return null
+  if (avatar.startsWith('data:') || avatar.startsWith('http')) return avatar
+  return `${API_URL}${avatar}`
+}
+
 function MainPage({ user, onLogout, onNavigate }) {
   const [currentTime, setCurrentTime] = useState(new Date())
 
@@ -31,7 +40,11 @@ function MainPage({ user, onLogout, onNavigate }) {
         </div>
         <div className="nav-user">
           <div className="user-avatar">
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+            {getAvatarUrl(user?.avatar) ? (
+              <img src={getAvatarUrl(user?.avatar)} alt="Avatar" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} />
+            ) : (
+              user?.name ? user.name.charAt(0).toUpperCase() : 'U'
+            )}
           </div>
           <button className="logout-btn" onClick={onLogout}>
             Logout

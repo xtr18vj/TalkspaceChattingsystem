@@ -221,13 +221,16 @@ const changePassword = async (req, res) => {
 // @access  Private
 const updateProfile = async (req, res) => {
   try {
-    const { name, bio, phone, avatarColor } = req.body;
+    const { name, bio, phone, avatarColor, location, website, email } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (bio !== undefined) updateData.bio = bio;
     if (phone !== undefined) updateData.phone = phone;
     if (avatarColor) updateData.avatarColor = avatarColor;
+    if (location !== undefined) updateData.location = location;
+    if (website !== undefined) updateData.website = website;
+    // Note: email changes should be handled separately with verification
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -238,7 +241,7 @@ const updateProfile = async (req, res) => {
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: { user }
+      user: user
     });
   } catch (error) {
     console.error('Update profile error:', error);
@@ -249,11 +252,47 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Upload user avatar
+// @route   POST /api/auth/avatar
+// @access  Private
+const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    // Store the avatar URL
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { avatar: avatarUrl },
+      { new: true }
+    ).select('-password');
+
+    res.json({
+      success: true,
+      message: 'Avatar uploaded successfully',
+      user: user
+    });
+  } catch (error) {
+    console.error('Upload avatar error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error uploading avatar'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
   logout,
   changePassword,
-  updateProfile
+  updateProfile,
+  uploadAvatar
 };

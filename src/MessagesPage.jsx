@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { conversationsAPI, messagesAPI } from './services/api'
+import socketService from './services/socket'
 import './MessagesPage.css'
 
 function MessagesPage({ user, onLogout, onNavigate }) {
@@ -21,6 +23,7 @@ function MessagesPage({ user, onLogout, onNavigate }) {
   const [pinnedMessages, setPinnedMessages] = useState([])
   const [showPinnedMessages, setShowPinnedMessages] = useState(false)
   const [forwardingMessage, setForwardingMessage] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const recordingIntervalRef = useRef(null)
@@ -138,6 +141,112 @@ function MessagesPage({ user, onLogout, onNavigate }) {
     },
   ])
 
+  // Load conversations from backend
+  useEffect(() => {
+    const loadConversations = async () => {
+      try {
+        setIsLoading(true)
+        const response = await conversationsAPI.getAll()
+        if (response.data && response.data.length > 0) {
+          const formattedConversations = response.data.map(conv => ({
+            id: conv._id,
+            name: conv.type === 'group' ? conv.name : conv.participants?.find(p => p._id !== user?._id)?.name || 'Unknown',
+            avatar: conv.type === 'group' ? conv.name?.[0] : conv.participants?.find(p => p._id !== user?._id)?.name?.[0] || '?',
+            avatarColor: conv.type === 'group' ? conv.groupAvatarColor : conv.participants?.find(p => p._id !== user?._id)?.avatarColor || '#7e22ce',
+            lastMessage: conv.lastMessage?.content || 'No messages yet',
+            time: conv.lastMessage ? new Date(conv.lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            unread: conv.unreadCount || 0,
+            online: false,
+            typing: false,
+            pinned: false,
+            muted: false,
+            archived: conv.archived || false,
+            isGroup: conv.type === 'group',
+            members: conv.type === 'group' ? conv.participants?.map(p => p.name) : [],
+            lastSeen: 'Offline',
+            messages: []
+          }))
+          setConversations(prev => [...formattedConversations, ...prev])
+        }
+      } catch (error) {
+        console.error('Error loading conversations:', error)
+        // Keep mock data if API fails
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadConversations()
+
+    // Set up socket listeners for real-time messages
+    const token = localStorage.getItem('token')
+    if (token) {
+      socketService.connect(token)
+      
+      socketService.on('new-message', (data) => {
+        console.log('New message received:', data)
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === data.conversationId) {
+            const newMsg = {
+              id: data.message._id,
+              text: data.message.content,
+              sender: data.message.sender === user?._id ? 'me' : 'them',
+              senderName: data.message.senderName,
+              time: new Date(data.message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: 'delivered',
+              reactions: [],
+              timestamp: new Date(data.message.createdAt).getTime()
+            }
+            return {
+              ...conv,
+              messages: [...conv.messages, newMsg],
+              lastMessage: data.message.content,
+              time: 'Just now'
+            }
+          }
+          return conv
+        }))
+        
+        // Update selected chat if it's the one receiving the message
+        setSelectedChat(prev => {
+          if (prev && prev.id === data.conversationId) {
+            const newMsg = {
+              id: data.message._id,
+              text: data.message.content,
+              sender: data.message.sender === user?._id ? 'me' : 'them',
+              senderName: data.message.senderName,
+              time: new Date(data.message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: 'delivered',
+              reactions: [],
+              timestamp: new Date(data.message.createdAt).getTime()
+            }
+            return {
+              ...prev,
+              messages: [...prev.messages, newMsg]
+            }
+          }
+          return prev
+        })
+      })
+
+      socketService.on('user-typing', (data) => {
+        setConversations(prev => prev.map(conv => 
+          conv.id === data.conversationId ? { ...conv, typing: true } : conv
+        ))
+        setTimeout(() => {
+          setConversations(prev => prev.map(conv => 
+            conv.id === data.conversationId ? { ...conv, typing: false } : conv
+          ))
+        }, 3000)
+      })
+    }
+
+    return () => {
+      socketService.off('new-message')
+      socketService.off('user-typing')
+    }
+  }, [user?._id])
+
   useEffect(() => {
     if (selectedChat?.messages?.length > 0) {
       const timer = setTimeout(() => {
@@ -182,13 +291,14 @@ function MessagesPage({ user, onLogout, onNavigate }) {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!message.trim() || !selectedChat) return
 
+    const messageText = message
     const newMessage = {
       id: Date.now(),
-      text: message,
+      text: messageText,
       sender: 'me',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: 'sent',
@@ -197,13 +307,40 @@ function MessagesPage({ user, onLogout, onNavigate }) {
       replyTo: replyingTo ? { id: replyingTo.id, text: replyingTo.text, sender: replyingTo.sender } : null
     }
 
+    // Optimistically update UI
     updateConversationWithMessage(newMessage)
     setMessage('')
     setReplyingTo(null)
     setShowEmojiPicker(false)
 
-    setTimeout(() => updateMessageStatus(newMessage.id, 'delivered'), 1000)
-    setTimeout(() => updateMessageStatus(newMessage.id, 'read'), 2000)
+    // Send to backend if conversation has a real ID (from database)
+    if (selectedChat.id && typeof selectedChat.id === 'string' && selectedChat.id.length === 24) {
+      try {
+        const response = await messagesAPI.send(selectedChat.id, messageText)
+        if (response.data) {
+          // Update message with server ID
+          setConversations(prev => prev.map(conv => {
+            if (conv.id === selectedChat.id) {
+              return {
+                ...conv,
+                messages: conv.messages.map(msg => 
+                  msg.id === newMessage.id ? { ...msg, id: response.data._id, status: 'delivered' } : msg
+                )
+              }
+            }
+            return conv
+          }))
+        }
+      } catch (error) {
+        console.error('Error sending message:', error)
+        // Mark message as failed
+        updateMessageStatus(newMessage.id, 'failed')
+      }
+    } else {
+      // For mock conversations, simulate delivery
+      setTimeout(() => updateMessageStatus(newMessage.id, 'delivered'), 1000)
+      setTimeout(() => updateMessageStatus(newMessage.id, 'read'), 2000)
+    }
   }
 
   const updateConversationWithMessage = (newMessage) => {

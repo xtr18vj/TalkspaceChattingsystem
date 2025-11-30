@@ -40,6 +40,16 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  location: {
+    type: String,
+    maxlength: [100, 'Location cannot exceed 100 characters'],
+    default: ''
+  },
+  website: {
+    type: String,
+    maxlength: [200, 'Website cannot exceed 200 characters'],
+    default: ''
+  },
   status: {
     type: String,
     enum: ['online', 'offline', 'away', 'busy'],

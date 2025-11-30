@@ -7,36 +7,8 @@ const conversationSchema = new mongoose.Schema({
     default: 'private'
   },
   participants: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    joinedAt: {
-      type: Date,
-      default: Date.now
-    },
-    role: {
-      type: String,
-      enum: ['admin', 'member'],
-      default: 'member'
-    },
-    isMuted: {
-      type: Boolean,
-      default: false
-    },
-    isPinned: {
-      type: Boolean,
-      default: false
-    },
-    isArchived: {
-      type: Boolean,
-      default: false
-    },
-    lastRead: {
-      type: Date,
-      default: null
-    }
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }],
   // Group specific fields
   groupName: {

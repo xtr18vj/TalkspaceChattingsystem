@@ -1,18 +1,29 @@
 import { useState, useRef } from 'react'
+import { userAPI } from './services/api'
 import './SettingsPage.css'
+
+const API_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
+
+// Helper to get full avatar URL
+const getAvatarUrl = (avatar) => {
+  if (!avatar) return null
+  if (avatar.startsWith('data:') || avatar.startsWith('http')) return avatar
+  return `${API_URL}${avatar}`
+}
 
 function SettingsPage({ user, onLogout, onNavigate, onUpdateUser }) {
   const [activeTab, setActiveTab] = useState('profile')
+  const [isSaving, setIsSaving] = useState(false)
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: '',
-    bio: '',
-    location: '',
-    website: ''
+    phone: user?.phone || '',
+    bio: user?.bio || '',
+    location: user?.location || '',
+    website: user?.website || ''
   })
   const [profileImage, setProfileImage] = useState(null)
-  const [previewImage, setPreviewImage] = useState(null)
+  const [previewImage, setPreviewImage] = useState(getAvatarUrl(user?.avatar))
   const fileInputRef = useRef(null)
   
   const [preferences, setPreferences] = useState({
@@ -72,14 +83,48 @@ function SettingsPage({ user, onLogout, onNavigate, onUpdateUser }) {
     }
   }
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault()
-    // In a real app, this would send data to a backend
-    if (onUpdateUser) {
-      onUpdateUser({ ...user, name: profileData.name, email: profileData.email })
+    setIsSaving(true)
+    
+    try {
+      let updatedUser = { ...user }
+      
+      // Upload profile picture if changed
+      if (profileImage) {
+        const formData = new FormData()
+        formData.append('avatar', profileImage)
+        const avatarResponse = await userAPI.uploadAvatar(formData)
+        if (avatarResponse.user) {
+          updatedUser = { ...updatedUser, avatar: avatarResponse.user.avatar }
+          setPreviewImage(getAvatarUrl(avatarResponse.user.avatar))
+          setProfileImage(null) // Clear the file input
+        }
+      }
+      
+      // Update profile data
+      const response = await userAPI.updateProfile({
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone,
+        bio: profileData.bio,
+        location: profileData.location,
+        website: profileData.website
+      })
+      
+      if (response.user && onUpdateUser) {
+        onUpdateUser({ ...response.user, avatar: updatedUser.avatar || response.user.avatar })
+      }
+      
+      setSuccessMessage('Profile updated successfully!')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (error) {
+      console.error('Error saving profile:', error)
+      setSuccessMessage('Failed to save profile. Please try again.')
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } finally {
+      setIsSaving(false)
     }
-    setSuccessMessage('Profile updated successfully!')
-    setTimeout(() => setSuccessMessage(''), 3000)
   }
 
   const handlePreferenceChange = (key) => {

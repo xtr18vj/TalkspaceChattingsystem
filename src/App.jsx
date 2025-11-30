@@ -206,6 +206,8 @@ function App() {
 
   const handleUpdateUser = (updatedUser) => {
     setCurrentUser(updatedUser)
+    // Also update localStorage so changes persist on refresh
+    localStorage.setItem('user', JSON.stringify(updatedUser))
   }
 
   if (isLoggedIn && currentUser) {

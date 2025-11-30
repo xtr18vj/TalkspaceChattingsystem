@@ -234,7 +234,7 @@
 
 .form-subtitle {
   margin: 0;
-  color: #64748b;
+  color: #1c3e6c;
   font-size: 1rem;
   font-weight: 400;
 }
@@ -244,9 +244,9 @@
 }
 
 .form-group label {
-  display: block;
+  
   margin-bottom: 0.6rem;
-  color: #374151;
+  color: #021028;
   font-weight: 600;
   font-size: 0.9rem;
   letter-spacing: 0.01em;
@@ -255,13 +255,13 @@
 .form-group input {
   width: 100%;
   padding: 1rem 1.25rem;
-  border: 2px solid #e5e7eb;
+  border: 2px solid #e5e7eb4e;
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
   font-family: inherit;
-  background: #f9fafb;
+  background: #53a6f8;
 }
 
 .form-group input::placeholder {
